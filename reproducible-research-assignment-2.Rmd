@@ -55,35 +55,41 @@ library(dplyr)
 nrow(distinct(select(noaa, EVTYPE)))
 ```
 
-The field `EVTYPE` has `r nrow(distinct(select(noaa, EVTYPE)))` distinct values. Going through them, it seems some are summaries. Others have labels that start with spaces. I am also going to check for typos.
+The field `EVTYPE` has `r nrow(distinct(select(noaa, EVTYPE)))` distinct values. Going through them, it seems some are summaries. Others have labels that start with spaces. There are some inconsistencies with uppercase/lowercase - let's just move everything to uppercase. I am also going to check for typos.
 
-First, remove surrounding whitespace on event types:
+First, remove surrounding whitespace on event types and uppercase everything:
 
 ```{r}
 noaa$EVTYPE2 <- trimws(noaa$EVTYPE)
+noaa$EVTYPE2 <- toupper(noaa$EVTYPE2)
 nrow(distinct(select(noaa, EVTYPE2)))
 ```
 
 The new field `EVTYPE2` has `r nrow(distinct(select(noaa, EVTYPE2)))`, less than `EVTYPE`, so we are making progress.
 
-Next, remove any summary rows:
+Next, remove any summary rows, and while we are at it, any NA rows (those with value `?`):
 
 ```{r}
 noaa2 <- filter(noaa, !grepl('summary', noaa$EVTYPE2, ignore.case=TRUE))
+noaa2 <- filter(noaa2, EVTYPE2 != '?')
+nrow(distinct(select(noaa2, EVTYPE2)))
 ```
+
+The new dataset `noaa2` has only `nrow(distinct(select(noaa2, EVTYPE2)))` distinct event types.
 
 Sorting the field has the advantage that it makes it easy to spot typos in the data (such as `AVALANCE` and `AVALANCHE`)
 
 ```{r}
 
 # NOTE: the code below will generate a long list of event types
-# I have not included this in the report for readability sake
-distinct(select(noaa, EVTYPE)) %>% arrange(EVTYPE)
+distinct(select(noaa2, EVTYPE2)) %>% arrange(EVTYPE2)
 ```
 
-Let us start by removing whitespace around each variable
+Next, we slog through this list, replacing each occurrence of a typo with the correct version:
 
-Also, check for missing data...
+```{r}
+noaa2[noaa2$EVTYPE2 == 'AVALANCE']$EVTYPE2 = 'AVALANCHE'
+```
 
 ## Analysis
 
@@ -96,3 +102,4 @@ I am trying to answer these two questions:
 
 
 ## Results
+
