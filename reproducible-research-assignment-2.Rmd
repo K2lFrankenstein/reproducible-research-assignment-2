@@ -82,14 +82,47 @@ Sorting the field has the advantage that it makes it easy to spot typos in the d
 ```{r}
 
 # NOTE: the code below will generate a long list of event types
-distinct(select(noaa2, EVTYPE2)) %>% arrange(EVTYPE2)
+evtypes <- distinct(select(noaa2, EVTYPE2)) %>% arrange(EVTYPE2)
+head(evtypes)
 ```
 
-Next, we slog through this list, replacing each occurrence of a typo with the correct version:
+Next, we slog through this list, but we're lazy, so we are going to compare using `adist` and assume that a distance < 2 is a typo. We will update the original event type with the match that has the most entries, assuming that the typo is less common than the original value. This does create a problem of `THUNDERSTORM WIND 50` being lumped togeter with `THUNDERSTORM WIND 60`. So, for this analysis, I am going to remove all numbers from event types as well as numbers that start with a letter (`F0`, `G50` etc.) and parenthesis too.
 
 ```{r}
-noaa2[noaa2$EVTYPE2 == 'AVALANCE']$EVTYPE2 = 'AVALANCHE'
+# remove numbers with potential leading letter from event types
+noaa2$EVTYPE3 <- gsub('[A-Z]?[0-9]+', '', noaa2$EVTYPE2)
+
+# remove ' MPH'
+noaa2$EVTYPE3 <- sub(' MPH', '', noaa2$EVTYPE3)
+
+# remove any non-letter character from event types
+noaa2$EVTYPE3 <- gsub('[^A-Z]', '', noaa2$EVTYPE3)
 ```
+
+Next we update similar event types, using the most common one as the probably correct one:
+(NOTE: I didn't just create the whole matrix/vectorize, because R Studio kept crashing... therefore we loop!)
+
+```{r}
+evtypes <- distinct(select(noaa2, EVTYPE3)) %>% arrange(EVTYPE3)
+for (row in 1:(nrow(evtypes)-1)) {
+    left <- evtypes[row, 1]
+    right <- evtypes[row+1, 1]
+    distance <- adist(left, right)[1, 1]
+    if (distance < 2) {
+        nleft <- length(noaa2[noaa2$EVTYPE3 == left, 'EVTYPE3'])
+        nright <- length(noaa2[noaa2$EVTYPE3 == right, 'EVTYPE3'])
+        if (nleft > nright) {
+            noaa2$EVTYPE3[noaa2$evtype3 == right] <- left
+        }
+        else {
+            noaa2$EVTYPE3[noaa2$evtype3 == left] <- right
+        }
+    }
+}
+evtypes <- distinct(select(noaa2, EVTYPE3)) %>% arrange(EVTYPE3)
+```
+
+This list shows some good candidates for fixing up. We also see (in the case of `TSTM WIND 40` and `TSTM WIND 45` that this approach breaks down a bit - I was going to automatically fix the typos but now decided to just type the fixes out)
 
 ## Analysis
 
