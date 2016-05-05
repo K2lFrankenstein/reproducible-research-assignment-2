@@ -1,0 +1,98 @@
+---
+title: "Reproducible Research Assignment 2"
+author: "Daren Thomas"
+date: "5 May 2016"
+output: html_document
+---
+
+## Synopsis
+
+## Data Processing
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+The data for this assignment come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. You can [download the file from the course web site](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2): 
+
+```{r cache=TRUE} 
+noaa.url = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+noaa.bz2 = "storm-data.csv.bz2"
+if (! file.exists(noaa.bz2)) {
+    download.file(url=noaa.url, destfile=noaa.bz2)
+}
+noaa <- read.csv(noaa.bz2)
+```
+
+After reading, we check the first few rows (there are `r nrow(noaa)` ) in the dataset:
+
+```{r}
+dim(noaa)
+```
+
+```{r}
+head(noaa)
+```
+
+Also, I am interested in the types of the fields:
+
+```{r}
+str(noaa)
+```
+
+It looks like the variables I'm most interested in are:
+
+- `EVTYPE`
+- `FATALITIES`
+- `INJURIES`
+- `PROPDMG`
+- `CROPDMB`
+
+### Processing of Field `EVTYPE`
+```{r}
+library(dplyr)
+```
+
+```{r}
+nrow(distinct(select(noaa, EVTYPE)))
+```
+
+The field `EVTYPE` has `r nrow(distinct(select(noaa, EVTYPE)))` distinct values. Going through them, it seems some are summaries. Others have labels that start with spaces. I am also going to check for typos.
+
+First, remove surrounding whitespace on event types:
+
+```{r}
+noaa$EVTYPE2 <- trimws(noaa$EVTYPE)
+nrow(distinct(select(noaa, EVTYPE2)))
+```
+
+The new field `EVTYPE2` has `r nrow(distinct(select(noaa, EVTYPE2)))`, less than `EVTYPE`, so we are making progress.
+
+Next, remove any summary rows:
+
+```{r}
+noaa2 <- filter(noaa, !grepl('summary', noaa$EVTYPE2, ignore.case=TRUE))
+```
+
+Sorting the field has the advantage that it makes it easy to spot typos in the data (such as `AVALANCE` and `AVALANCHE`)
+
+```{r}
+
+# NOTE: the code below will generate a long list of event types
+# I have not included this in the report for readability sake
+distinct(select(noaa, EVTYPE)) %>% arrange(EVTYPE)
+```
+
+Let us start by removing whitespace around each variable
+
+Also, check for missing data...
+
+## Analysis
+
+I am trying to answer these two questions:
+
+1. Across the United States, which types of events (as indicated in the 𝙴𝚅𝚃𝚈𝙿𝙴 variable) are most harmful with respect to population health?
+2. Across the United States, which types of events have the greatest economic consequences?
+
+
+
+
+## Results
