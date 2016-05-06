@@ -101,6 +101,7 @@ noaa2$EVTYPE3 <- gsub('[^A-Z]', '', noaa2$EVTYPE3)
 
 Next we update similar event types, using the most common one as the probably correct one:
 (NOTE: I didn't just create the whole matrix/vectorize, because R Studio kept crashing... therefore we loop!)
+(NOTE: this process is iterative, do it a couple of times...)
 
 ```{r}
 evtypes <- distinct(select(noaa2, EVTYPE3)) %>% arrange(EVTYPE3)
@@ -112,17 +113,44 @@ for (row in 1:(nrow(evtypes)-1)) {
         nleft <- length(noaa2[noaa2$EVTYPE3 == left, 'EVTYPE3'])
         nright <- length(noaa2[noaa2$EVTYPE3 == right, 'EVTYPE3'])
         if (nleft > nright) {
-            noaa2$EVTYPE3[noaa2$evtype3 == right] <- left
+            noaa2$EVTYPE3[noaa2$EVTYPE3 == right] <- left
+            #print(c(right, length(noaa2[noaa2$EVTYPE3 == right, 'EVTYPE3'])))
         }
         else {
-            noaa2$EVTYPE3[noaa2$evtype3 == left] <- right
+            noaa2$EVTYPE3[noaa2$EVTYPE3 == left] <- right
+            #print(c(left, length(noaa2[noaa2$EVTYPE3 == left, 'EVTYPE3'])))
         }
     }
 }
 evtypes <- distinct(select(noaa2, EVTYPE3)) %>% arrange(EVTYPE3)
 ```
 
-This list shows some good candidates for fixing up. We also see (in the case of `TSTM WIND 40` and `TSTM WIND 45` that this approach breaks down a bit - I was going to automatically fix the typos but now decided to just type the fixes out)
+It turns out that this approach is only a first stab - we'd have to actually define a smaller set of event types and a mapping to those types. For the purposes of this analysis, I think we have done enough.
+
+Let us look at the other fields we'd like to analyse:
+
+```{r}
+noaa2$FATALITIES <- as.numeric(noaa2$FATALITIES)
+noaa2$INJURIES <- as.numeric(noaa2$INJURIES)
+noaa2$PROPDMG <- as.numeric(noaa2$PROPDMG)
+noaa2$CROPDMG <- as.numeric(noaa2$CROPDMG)
+```
+
+Going through the documentation, it seems as if the `PROPDMGEXP` and `CROPDMGEXP` fields contain an exponend to multiply the `PROPDMG` and `CROPDMG` values with. I need to clean this up since a couple of conventions are used:
+
+```{r}
+# first all uppercase
+noaa2$PROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
+
+# replace `?` and `-` and `+` and ` ` with `0`
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP %in% c('?', '-', ' ', '+')] <- '0'
+
+# replace K, M, B, H with 3, 6, 9, 2 respectively
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'K'] <- '3'
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'M'] <- '6'
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'B'] <- '9'
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'H'] <- '2'
+```
 
 ## Analysis
 
