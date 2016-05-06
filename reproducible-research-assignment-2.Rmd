@@ -134,6 +134,9 @@ noaa2$FATALITIES <- as.numeric(noaa2$FATALITIES)
 noaa2$INJURIES <- as.numeric(noaa2$INJURIES)
 noaa2$PROPDMG <- as.numeric(noaa2$PROPDMG)
 noaa2$CROPDMG <- as.numeric(noaa2$CROPDMG)
+
+noaa2$FATALITIES <- as.numeric(noaa2$FATALITIES)
+noaa2$INJURIES <- as.numeric(noaa2$INJURIES)
 ```
 
 Going through the documentation, it seems as if the `PROPDMGEXP` and `CROPDMGEXP` fields contain an exponend to multiply the `PROPDMG` and `CROPDMG` values with. I need to clean this up since a couple of conventions are used:
@@ -185,7 +188,9 @@ I am trying to answer these two questions:
 2. Across the United States, which types of events have the greatest economic consequences?
 
 
+### Most harmful with respect to population health
 
+Let us say, population health is impaired by fatalities and injuries
 
 ## Results
 
