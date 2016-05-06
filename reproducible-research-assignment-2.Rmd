@@ -141,15 +141,40 @@ Going through the documentation, it seems as if the `PROPDMGEXP` and `CROPDMGEXP
 ```{r}
 # first all uppercase
 noaa2$PROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
+noaa2$PROPDMGEXP <- trimws(noaa2$PROPDMGEXP)
 
 # replace `?` and `-` and `+` and ` ` with `0`
-noaa2$PROPDMGEXP[noaa2$PROPDMGEXP %in% c('?', '-', ' ', '+')] <- '0'
+noaa2$PROPDMGEXP[noaa2$PROPDMGEXP %in% c('?', '-', '', '+')] <- '0'
 
 # replace K, M, B, H with 3, 6, 9, 2 respectively
 noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'K'] <- '3'
 noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'M'] <- '6'
 noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'B'] <- '9'
 noaa2$PROPDMGEXP[noaa2$PROPDMGEXP == 'H'] <- '2'
+noaa2$PROPDMGEXP <- as.numeric(noaa2$PROPDMGEXP)
+
+
+# create new field with multiplied values
+mutate(noaa2, property.damage = PROPDMG * (10 ^ PROPDMGEXP))
+
+# repeat for crop damage
+# first all uppercase
+noaa2$PROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
+noaa2$PROPDMGEXP <- trimws(noaa2$PROPDMGEXP)
+
+# replace `?` and `-` and `+` and ` ` with `0`
+noaa2$CROPDMGEXP[noaa2$CROPDMGEXP %in% c('?', '-', '', '+')] <- '0'
+
+# replace K, M, B, H with 3, 6, 9, 2 respectively
+noaa2$CROPDMGEXP[noaa2$CROPDMGEXP == 'K'] <- '3'
+noaa2$CROPDMGEXP[noaa2$CROPDMGEXP == 'M'] <- '6'
+noaa2$CROPDMGEXP[noaa2$CROPDMGEXP == 'B'] <- '9'
+noaa2$CROPDMGEXP[noaa2$CROPDMGEXP == 'H'] <- '2'
+noaa2$CROPDMGEXP <- as.numeric(noaa2$CROPDMGEXP)
+
+
+# create new field with multiplied values
+mutate(noaa2, crop.damage = CROPDMG * (10 ^ CROPDMGEXP))
 ```
 
 ## Analysis
