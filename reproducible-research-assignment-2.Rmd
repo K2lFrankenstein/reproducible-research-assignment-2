@@ -1,11 +1,15 @@
 ---
-title: "Reproducible Research Assignment 2"
+title: "Which Weather Events Affect Public Health And Economy The Most According To NOAA Storm Database (1950 - 2011)"
 author: "Daren Thomas"
 date: "5 May 2016"
 output: html_document
 ---
 
 ## Synopsis
+
+This Report uses the Storm Database of the U.S. National Oceanic and Atmospheric Administration (NOAA) to identify those weather events that create the most harm to public health and the economy. Harm to public health is shown as total fatalities by event type and total injuries by event type. Harm to the economy looks at property damage by event type as well as damage to crops by event type. Data from 1950 to 2011 are considered. An approach to automatically cleaning event type labels in the data is attempted with limited success.
+
+The most harmful event type for public health is `TORNADO`. `FLOOD` creates the most property damage, followed by `HURRICANETYPHOON` which also happens to be the most harmful event regarding crop damage.
 
 ## Data Processing
 
@@ -48,7 +52,7 @@ It looks like the variables I'm most interested in are:
 
 ### Processing of Field `EVTYPE`
 ```{r}
-library(dplyr)
+require(dplyr)
 ```
 
 ```{r}
@@ -75,7 +79,7 @@ noaa2 <- filter(noaa2, EVTYPE2 != '?')
 nrow(distinct(select(noaa2, EVTYPE2)))
 ```
 
-The new dataset `noaa2` has only `nrow(distinct(select(noaa2, EVTYPE2)))` distinct event types.
+The new dataset `noaa2` has only `r nrow(distinct(select(noaa2, EVTYPE2)))` distinct event types.
 
 Sorting the field has the advantage that it makes it easy to spot typos in the data (such as `AVALANCE` and `AVALANCHE`)
 
@@ -101,7 +105,6 @@ noaa2$EVTYPE3 <- gsub('[^A-Z]', '', noaa2$EVTYPE3)
 
 Next we update similar event types, using the most common one as the probably correct one:
 (NOTE: I didn't just create the whole matrix/vectorize, because R Studio kept crashing... therefore we loop!)
-(NOTE: this process is iterative, do it a couple of times...)
 
 ```{r}
 evtypes <- distinct(select(noaa2, EVTYPE3)) %>% arrange(EVTYPE3)
@@ -143,6 +146,7 @@ Going through the documentation, it seems as if the `PROPDMGEXP` and `CROPDMGEXP
 
 ```{r}
 # first all uppercase
+noaa2$PROPDMGEXP <- as.character(noaa2$PROPDMGEXP)
 noaa2$PROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
 noaa2$PROPDMGEXP <- trimws(noaa2$PROPDMGEXP)
 
@@ -158,12 +162,13 @@ noaa2$PROPDMGEXP <- as.numeric(noaa2$PROPDMGEXP)
 
 
 # create new field with multiplied values
-mutate(noaa2, property.damage = PROPDMG * (10 ^ PROPDMGEXP))
+noaa2 <- mutate(noaa2, property.damage = PROPDMG * (10 ^ PROPDMGEXP))
 
 # repeat for crop damage
 # first all uppercase
-noaa2$PROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
-noaa2$PROPDMGEXP <- trimws(noaa2$PROPDMGEXP)
+noaa2$CROPDMGEXP <- as.character(noaa2$PROPDMGEXP)
+noaa2$CROPDMGEXP <- toupper(noaa2$PROPDMGEXP)
+noaa2$CROPDMGEXP <- trimws(noaa2$PROPDMGEXP)
 
 # replace `?` and `-` and `+` and ` ` with `0`
 noaa2$CROPDMGEXP[noaa2$CROPDMGEXP %in% c('?', '-', '', '+')] <- '0'
@@ -177,10 +182,13 @@ noaa2$CROPDMGEXP <- as.numeric(noaa2$CROPDMGEXP)
 
 
 # create new field with multiplied values
-mutate(noaa2, crop.damage = CROPDMG * (10 ^ CROPDMGEXP))
+noaa2 <- mutate(noaa2, crop.damage = CROPDMG * (10 ^ CROPDMGEXP))
+
+# next, let's just drop the fields we're not interested in:
+noaa3 <- select(noaa2, EVTYPE3, INJURIES, FATALITIES, property.damage, crop.damage)
 ```
 
-## Analysis
+## Results
 
 I am trying to answer these two questions:
 
@@ -190,7 +198,70 @@ I am trying to answer these two questions:
 
 ### Most harmful with respect to population health
 
-Let us say, population health is impaired by fatalities and injuries
+Let us say, population health is impaired by fatalities and injuries. So, which events have the highest count of fatalities?
 
-## Results
+```{r}
+fatal <- noaa3 %>% group_by(EVTYPE3) %>% summarize(total.fatalities=sum(FATALITIES)) %>%  
+    arrange(desc(total.fatalities))
+top.fatal <- head(fatal, n=10)
+top.fatal
+```
 
+Viewing the `TSTMWIND` event type, we can see shortcomings of the data cleaning step - future research could try to do a better job here, but a quick glance at the numbers suggests that the top three (TORNADO, EXCESSIVEHEAT and FLASHFLOOD) will not be altered.
+
+What events cause the most injuries? We can use the same technique here:
+
+```{r}
+injuries <- noaa3 %>% group_by(EVTYPE3) %>% summarize(total.injuries=sum(INJURIES)) %>%  
+    arrange(desc(total.injuries))
+top.injuries <- head(injuries, n=10)
+top.injuries
+```
+
+Here, again, shortcommings of my data cleaning step show up. It is still clear, though, that `TORNADO` is the big bad event!
+
+Let's show this graphically:
+
+```{r}
+require(ggplot2)
+
+par(mfrow=c(1, 2), mar = c(12, 4, 2, 2.5), cex=0.7)
+barplot(top.fatal$total.fatalities, names.arg=top.fatal$EVTYPE3, ylab='Fatalities', las=3, 
+        main='Fatalities by Event type')
+barplot(top.injuries$total.injuries, names.arg=top.injuries$EVTYPE3, ylab='Injuries', las=3, 
+        main='Injuries by Event type')
+```
+
+### Most harmful with respect to the economy
+
+Next, we look at the cost of these events to the economy. We look at both property damage and damage to crops:
+
+```{r}
+property <- noaa3 %>% group_by(EVTYPE3) %>% summarize(total.property.damage=sum(property.damage)) %>%  
+    arrange(desc(total.property.damage))
+top.property <- head(property, n=10)
+top.property
+```
+
+```{r}
+crop <- noaa3 %>% group_by(EVTYPE3) %>% summarize(total.crop.damage=sum(crop.damage)) %>%  
+    arrange(desc(total.crop.damage))
+top.crop <- head(crop, n=10)
+top.crop
+```
+
+```{r}
+require(ggplot2)
+
+par(mfrow=c(1, 2), mar = c(12, 4, 2, 2.5), cex=0.7)
+barplot(top.property$total.property.damage / 1000, names.arg=top.property$EVTYPE3, ylab='Property Damage (1000 $)', las=3, 
+        main='Property Damage by Event type')
+barplot(top.crop$total.crop.damage / 1000, names.arg=top.crop$EVTYPE3, ylab='Crop Damage (1000 $)', las=3, 
+        main='Crop Damage by Event type')
+```
+
+We can see that `HURRICANE` and `HURRICANETYPHOON` are both the most harmful event types for crops. These probably could  even be lumped into a single event type `HURRICANE` (see data cleaning section).
+
+We can also see that `FLOOD` causes the most property damage, with `HURRICANETYPHOON` and `TORNADO` among the top 3 too!
+
+I would be interested in seeing how much these numbers change if I had time to reassign each event type to a smaller list (say, 20-30 types) by doing a more rigorous data cleaning. I do not really think the #1's will change, though.
